@@ -1,0 +1,67 @@
+#!/usr/bin/env python2
+
+import svn
+import svngtk
+import gtk
+import gobject
+import pango
+import os.path
+import vte
+import tempfile
+
+class MainWindow(gtk.Window):
+    def __init__(self):
+        self.__init_window()
+
+        self.info = svn.Info('.')
+
+        self.notebook = gtk.Notebook()
+        self.__create_add_tab()
+        self.__create_wc_tab()
+
+        self.add(self.notebook)
+
+        self.show_all()
+        self.notebook.set_current_page(1)
+
+    def __create_wc_tab(self):
+        svn_branch = svn.Branch('.')
+        logview = svngtk.Log(svn_branch)
+        self.notebook.append_page(logview, gtk.Label("Working copy"))
+
+    def __create_commit_tab(self):
+        commitview = CommitView('.')
+        self.notebook.append_page(logview, gtk.Label("Commit"))
+
+    def __create_branch_tab(self, url):
+        branch = svn.Branch(url)
+        mergeview = svngtk.RemoteLog(branch)
+        mergeview.closed = self.__close_tab
+
+        if url[-1] == "/":
+            url = url[0:-1]
+
+        i = self.notebook.append_page(mergeview, gtk.Label(os.path.basename(url)))
+        self.notebook.show_all()
+        self.notebook.set_current_page(i)
+
+    def __close_tab(self):
+        self.notebook.remove_page(self.notebook.get_current_page())
+
+    def __create_add_tab(self):
+        branch_select = svngtk.BranchSelect(self.info.root)
+        branch_select.branch_opened = self.__create_branch_tab
+        self.notebook.append_page(branch_select, gtk.Label("+"))
+
+    def __init_window(self):
+        gtk.Window.__init__(self)
+        self.set_default_size(1200, 800)
+        self.connect('destroy', lambda w: gtk.main_quit())
+
+    def run(self):
+        gtk.main()
+
+
+if __name__ == "__main__":
+    MainWindow().run()
+
